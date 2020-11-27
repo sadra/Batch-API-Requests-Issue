@@ -1,12 +1,12 @@
-const task = function() {
+const task = function () {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
-            try{
+            try {
                 //Random error generator with 10% chance of error
-                if(Math.random() > 0.9) throw new Error("Something went wrong!");
+                if (Math.random() > 0.9) throw new Error("Something went wrong!");
 
                 resolve("Done")
-            }catch(err){
+            } catch (err) {
                 reject(err)
             }
         }, 100)
@@ -20,10 +20,10 @@ const callBatchOfTasks = async () => {
     printProcess()
 
     // Terminate recursion when there is no task ro process
-    if(!tasks.length) return;
+    if (!tasks.length) return;
 
-    // Split tasks array into a bunch of 5 tasks in each second
-    const bunchOfTasks = tasks.splice(0,5);
+    // Split tasks array into a bunch of 50 tasks in each 10 seconds
+    const bunchOfTasks = tasks.splice(0, 50);
 
     Promise.allSettled(bunchOfTasks.map(eachTask => eachTask()))
         .then((setteledTasks) => {
@@ -36,17 +36,17 @@ const callBatchOfTasks = async () => {
                     tasks.push(task)
                 })
 
-            // It guarantees that we process just 5 requests each second,
+            // It guarantees that we process just 50 requests each 10 seconds,
             // so we never cross the limitation.
             setTimeout(() => {
                 callBatchOfTasks()
-            }, 1000)
+            }, 10000)
         })
 }
 
 const printProcess = () => {
     console.clear();
-    console.log(`${Math.floor((new Date() - start)/1000)} seconds elapsed & there is ${tasks.length} tasks left.`)
+    console.log(`${Math.floor((new Date() - start) / 1000)} seconds elapsed & there is ${tasks.length} tasks left.`)
 }
 
 const start = new Date()
