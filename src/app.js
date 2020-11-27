@@ -13,11 +13,11 @@ const task = function () {
     })
 }
 
-const tasks = new Array(40).fill(task)
+const tasks = new Array(100).fill(task)
 
 
 const callBatchOfTasks = async (tasksList) => {
-    printProcess()
+    const startTimer = new Date()
 
     // Terminate recursion when there is no task ro process
     if (!tasksList.length) return;
@@ -26,19 +26,18 @@ const callBatchOfTasks = async (tasksList) => {
     const bunchOfTasks = tasksList.splice(0, 50);
 
     // Concurrenct process batch of 50 tasks
-    Promise.allSettled(bunchOfTasks.map(eachTask => eachTask()))
-        .then(async (setteledTasks) => {
-            await processFailedTasks(setteledTasks);
+    const setteledTasks = await Promise.allSettled(bunchOfTasks.map(eachTask => eachTask()))
 
-            // It guarantees that we process just 50 requests each 10 seconds,
-            // so we never cross the limitation.
-            setTimeout(() => {
-                callBatchOfTasks(tasksList)
-            }, 10000)
-        })
+    await processFailedTasks(setteledTasks, startTimer);
+
+    // It guarantees that we process just 50 requests each 10 seconds,
+    // so we never cross the limitation.
+    setTimeout(() => {
+        callBatchOfTasks(tasksList)
+    }, getNeededWaiting(startTimer))
 }
 
-async function processFailedTasks(setteledTasks) {
+async function processFailedTasks(setteledTasks, startTimer) {
     return new Promise((resolve) => {
         // Regenerate failed tasks, and make a new tasks list
         const failedTasks = setteledTasks
@@ -50,23 +49,25 @@ async function processFailedTasks(setteledTasks) {
         // Process failed tasks right now, befoe another batch
         if(failedTasks.length > 0){
             setTimeout(async () => {
-                await callBatchOfTasks(failedTasks);
-    
+                // Prevent js refrenced object type issue
+                await callBatchOfTasks([].concat(failedTasks));
+
                 resolve(failedTasks)
-            }, 10000)
+            }, getNeededWaiting(startTimer))
         }else{
             resolve([]) 
         }   
     })
 }
 
-
-const printProcess = () => {
-    console.clear();
-    console.log(`${Math.floor((new Date() - start) / 1000)} seconds elapsed & there is ${tasks.length} tasks left.`)
+// Helper to calculate if wee need wait more before send new requests
+const getNeededWaiting = (start) => {
+    const needed = 10 - (new Date() - start)/1000
+    return needed > 0 ? needed*1000 : 0
 }
 
-const start = new Date()
 callBatchOfTasks(tasks)
+
+
 
 
