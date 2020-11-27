@@ -13,36 +13,53 @@ const task = function () {
     })
 }
 
-const tasks = new Array(1000).fill(task)
+const tasks = new Array(40).fill(task)
 
 
-const callBatchOfTasks = async () => {
+const callBatchOfTasks = async (tasksList) => {
     printProcess()
 
     // Terminate recursion when there is no task ro process
-    if (!tasks.length) return;
+    if (!tasksList.length) return;
 
     // Split tasks array into a bunch of 50 tasks in each 10 seconds
-    const bunchOfTasks = tasks.splice(0, 50);
+    const bunchOfTasks = tasksList.splice(0, 50);
 
+    // Concurrenct process batch of 50 tasks
     Promise.allSettled(bunchOfTasks.map(eachTask => eachTask()))
-        .then((setteledTasks) => {
-            // Regenerate failed tasks, and push them to the tasks queue
-            setteledTasks
-                .filter(
-                    proccessedTasks => proccessedTasks.status === 'rejected'
-                )
-                .forEach(() => {
-                    tasks.push(task)
-                })
+        .then(async (setteledTasks) => {
+            await processFailedTasks(setteledTasks);
 
             // It guarantees that we process just 50 requests each 10 seconds,
             // so we never cross the limitation.
             setTimeout(() => {
-                callBatchOfTasks()
+                callBatchOfTasks(tasksList)
             }, 10000)
         })
 }
+
+async function processFailedTasks(setteledTasks) {
+    return new Promise((resolve) => {
+        // Regenerate failed tasks, and make a new tasks list
+        const failedTasks = setteledTasks
+            .filter(
+                proccessedTasks => proccessedTasks.status === 'rejected'
+            )
+            .map(() => task);
+
+        // Process failed tasks right now, befoe another batch
+        if(failedTasks.length > 0){
+            setTimeout(async () => {
+                await callBatchOfTasks(failedTasks);
+    
+                resolve(failedTasks)
+            }, 10000)
+        }else{
+            resolve([]) 
+        }   
+    })
+}
+
 
 const printProcess = () => {
     console.clear();
@@ -50,5 +67,6 @@ const printProcess = () => {
 }
 
 const start = new Date()
-callBatchOfTasks()
+callBatchOfTasks(tasks)
+
 
